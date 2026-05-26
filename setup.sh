@@ -13,6 +13,23 @@ fi
 NODE_VERSION=$(node -v)
 echo "✓ Node.js $NODE_VERSION"
 
+# Check for AMD GPU support
+echo ""
+echo "Checking GPU support..."
+if command -v rocm-smi &> /dev/null; then
+  echo "✓ AMD ROCm detected"
+  rocm-smi --showproductname 2>/dev/null || rocm-smi | head -5
+  echo "  See AMD_GPU_SETUP.md for configuration help"
+else
+  if command -v nvidia-smi &> /dev/null; then
+    echo "✓ NVIDIA CUDA detected"
+  else
+    echo "⚠ No GPU acceleration detected"
+    echo "  For AMD GPU: Install ROCm (see AMD_GPU_SETUP.md)"
+    echo "  For NVIDIA GPU: Install CUDA"
+  fi
+fi
+
 # Install dependencies
 echo "Installing dependencies..."
 npm install --no-audit --no-fund --loglevel=error

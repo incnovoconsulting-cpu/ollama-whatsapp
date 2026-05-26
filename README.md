@@ -134,6 +134,46 @@ WhatsApp Web automation is not officially supported by WhatsApp and may
 violate their Terms of Service. Use a dedicated test number, and use this
 project at your own risk.
 
+## Troubleshooting
+
+### Ollama only uses CPU, not GPU
+
+If you have a GPU but Ollama only detects CPU, see:
+- **AMD GPU (RX480, RX580, RX6000 series):** See [`AMD_GPU_SETUP.md`](AMD_GPU_SETUP.md)
+- **NVIDIA GPU:** Ensure CUDA is installed and Ollama is built with CUDA support
+- **Check Ollama logs:** `tail -50 ~/.ollama/logs/ollama.log` for GPU detection messages
+
+### Model not found after download
+
+This usually means:
+1. Check Ollama is running: `pgrep ollama` (should show process ID)
+2. Verify model was pulled: `ollama list` (should show your model)
+3. Wait a moment after pulling — initial load takes time
+4. Check disk space: `df -h` (model files need several GB)
+
+### WhatsApp session not connecting
+
+1. Make sure you scan the QR code on first run
+2. Check tokens folder exists: `ls -la tokens/`
+3. Try clearing session: `rm -rf tokens/<SESSION_NAME>/`
+4. On next run, a new QR will appear to scan
+
+### Bot replies are slow
+
+- **CPU-only:** Use smaller models (1-7B parameters instead of 13B+)
+- **GPU not used:** See GPU troubleshooting above
+- **Check temp:** If temperature is set high (0.9), generation is slower
+- **Use `/precise` command** to lower temperature and speed up responses
+
+### "ECONNREFUSED" errors connecting to Ollama
+
+Ollama is not running. Start it:
+```bash
+ollama serve &
+```
+
+Or if you want it to run automatically on boot, consider systemd (see `setup.sh --systemd`).
+
 ## License
 
 MIT
