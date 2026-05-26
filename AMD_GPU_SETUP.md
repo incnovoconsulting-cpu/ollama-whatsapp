@@ -67,23 +67,24 @@ sudo apt install -y ./rocm-core_*.deb ./hip-runtime-amd_*.deb
 
 **Option D: Use Pre-built Ollama with ROCm (Easiest)**
 
-The easiest solution is to use the latest Ollama release, which comes with ROCm support pre-bundled:
+The easiest solution is to use the latest Ollama release, which comes with ROCm support pre-bundled. Ollama 0.21+ includes ROCm support and can auto-detect AMD GPUs:
 
 ```bash
-# Download latest Ollama (includes ROCm)
+# If Ollama is already installed, just ensure it's up to date
+# Download latest from https://ollama.ai or:
 curl -fsSL https://ollama.ai/install.sh | sh
 
-# Or if you already have ollama installed, just restart it
+# Stop and restart Ollama
 killall ollama 2>/dev/null || true
+sleep 1
 ollama serve &
+
+# Wait a moment and check logs for GPU detection
+sleep 3
+tail -50 ~/.ollama/logs/ollama.log | grep -E "(total_vram|HIP|rocm|compute=)"
 ```
 
-Then verify GPU detection:
-```bash
-rocm-smi
-```
-
-If `rocm-smi` is not found, try just starting Ollama anyway — if it has ROCm support, it will detect the GPU automatically.
+**Note:** If Ollama 0.24.0 (which you're running) was installed from the official distribution, it should already have ROCm support. You may just need the ROCm runtime libraries, which can be installed with less dependency conflicts.
 
 **On CentOS/RHEL:**
 ```bash
@@ -112,36 +113,70 @@ ollama serve &
 
 ## Troubleshooting
 
-### Issue: APT dependency conflicts with rocm-hip-sdk
+### Issue: APT dependency conflicts with rocm-hip-sdk on Ubuntu 24.04
 
-If you get errors like:
+Ubuntu 24.04 (noble) has known version conflicts in the ROCm repository. If you get errors like:
 ```
 rocm-hip-runtime : Depends: rocminfo (= 1.0.0.70203) but 5.7.1 is to be installed
+rocm-hip-runtime-dev : Depends: hipcc (= 1.1.1.70203) but 5.7.1 is to be installed
 ```
 
-**Solution:** Use one of these alternatives:
+**Best Solution: Use Ollama's bundled ROCm (no apt conflicts)** ⭐
 
-1. **Clean up held packages:**
-   ```bash
-   sudo apt-mark unhold rocm-hip-runtime rocm-hip-runtime-dev rocminfo hipcc rocm-cmake
-   sudo apt update
-   sudo apt install -y rocm-hip-sdk rocm-libs
-   ```
+Ollama 0.21+ comes with ROCm support pre-compiled. Just install/update Ollama and it will auto-detect your GPU:
 
-2. **Or use Ollama's pre-bundled ROCm** (recommended):
-   ```bash
-   # Get latest Ollama which includes ROCm support
-   curl -fsSL https://ollama.ai/install.sh | sh
-   killall ollama 2>/dev/null || true
-   ollama serve &
-   ```
+```bash
+# Option 1: Use official installer
+curl -fsSL https://ollama.ai/install.sh | sh
 
-3. **Or manually fix by removing conflicting versions:**
-   ```bash
-   sudo apt remove rocminfo hipcc rocm-cmake --allow-remove-essential
-   sudo apt update
-   sudo apt install -y rocm-hip-sdk rocm-libs
-   ```
+# Option 2: Or if using docker
+docker run -d --device /dev/kfd --device /dev/dri --name ollama \
+  -p 11434:11434 ollama/ollama:latest
+
+# Restart Ollama
+sudo systemctl restart ollama
+# or manually:
+killall ollama 2>/dev/null || true
+sleep 1
+ollama serve &
+
+# Verify GPU detected (wait 3-5 seconds for Ollama to initialize)
+sleep 5
+tail -50 ~/.ollama/logs/ollama.log | grep -i "total_vram\|rocm\|hip"
+```
+
+**Alternative: Skip APT, use just runtime libraries:**
+
+If you must install ROCm system-wide, avoid rocm-hip-sdk and use only the runtime:
+
+```bash
+# Clean previous broken installs
+sudo apt remove -y rocm-hip-sdk rocm-hip-runtime rocm-hip-runtime-dev 2>/dev/null || true
+sudo apt autoremove -y
+
+# Just install minimal runtime
+sudo apt install -y rocm-core rocm-libs libhip-runtime64-amd64
+
+# Add user to groups
+sudo usermod -a -G video $USER
+sudo usermod -a -G render $USER
+
+# Log out and back in, then restart Ollama
+```
+
+**If still broken: Clear the ROCm repo and just use Ollama alone:**
+
+```bash
+# Remove the problematic ROCm repo
+sudo rm /etc/apt/sources.list.d/rocm.sources.list
+sudo apt update
+
+# Ollama doesn't strictly require rocm-hip-sdk to be installed
+# If Ollama was built with ROCm, it has its own bundled libraries
+# Just restart Ollama:
+killall ollama 2>/dev/null || true
+ollama serve &
+```
 
 ### Issue: "user overrode visible devices" warning
 This means `HIP_VISIBLE_DEVICES` is set incorrectly.
