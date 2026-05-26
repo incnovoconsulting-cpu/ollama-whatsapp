@@ -65,26 +65,56 @@ sudo apt install -y ./rocm-core_*.deb ./hip-runtime-amd_*.deb
 # (see "Option D" below)
 ```
 
-**Option D: Use Pre-built Ollama with ROCm (Easiest)**
+**Option D: Docker with Official Ollama Image (Ubuntu 24.04 Recommended)** ⭐
 
-The easiest solution is to use the latest Ollama release, which comes with ROCm support pre-bundled. Ollama 0.21+ includes ROCm support and can auto-detect AMD GPUs:
+Ubuntu 24.04 doesn't have stable ROCm packages in its repositories. **Docker is the cleanest solution:**
 
 ```bash
-# If Ollama is already installed, just ensure it's up to date
-# Download latest from https://ollama.ai or:
-curl -fsSL https://ollama.ai/install.sh | sh
+# 1. Install Docker (if not already installed)
+sudo apt install -y docker.io
+sudo usermod -a -G docker $USER
+# Log out and back in
 
-# Stop and restart Ollama
+# 2. Stop current Ollama
 killall ollama 2>/dev/null || true
-sleep 1
-ollama serve &
 
-# Wait a moment and check logs for GPU detection
+# 3. Run official Ollama with AMD GPU support
+docker run -d \
+  --name ollama \
+  --restart unless-stopped \
+  -p 11434:11434 \
+  --device /dev/kfd \
+  --device /dev/dri \
+  -v ollama:/root/.ollama \
+  ollama/ollama:latest
+
+# 4. Wait for it to start, then pull a model
 sleep 3
-tail -50 ~/.ollama/logs/ollama.log | grep -E "(total_vram|HIP|rocm|compute=)"
+docker exec ollama ollama pull llama3.2
+
+# 5. Check GPU detection in logs
+docker logs ollama | tail -20 | grep -i "total_vram\|rocm\|hip"
 ```
 
-**Note:** If Ollama 0.24.0 (which you're running) was installed from the official distribution, it should already have ROCm support. You may just need the ROCm runtime libraries, which can be installed with less dependency conflicts.
+**Verify it's working:**
+```bash
+# Test the model
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3.2",
+  "prompt": "What is 2+2?",
+  "stream": false
+}'
+
+# Or check GPU usage while running
+watch -n 1 "docker logs ollama | tail -3"
+```
+
+**Advantages:**
+- ✅ No Ubuntu 24.04 package conflicts
+- ✅ Pre-configured with ROCm support
+- ✅ Easy to update (just pull new image)
+- ✅ Isolated from system dependencies
+- ✅ Your WhatsApp bot connects to `http://localhost:11434`
 
 **On CentOS/RHEL:**
 ```bash
@@ -282,6 +312,18 @@ If problems persist:
 
 ## Recommended Settings for RX580
 
+### If Using Docker (Ubuntu 24.04+):
+
+Your `.env` file can stay as-is:
+```env
+OLLAMA_HOST=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.2
+```
+
+The Docker container automatically handles GPU access and ROCm.
+
+### If Using Native Binary (Ubuntu 22.04 with ROCm):
+
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 export HIP_VISIBLE_DEVICES=0
@@ -297,4 +339,30 @@ OLLAMA_HOST=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3.2-vision:11b-q4_k_m
 # or smaller for older hardware:
 # OLLAMA_MODEL=llama3.2:1b
+```
+
+## Switching from Binary to Docker
+
+If you already have Ollama running as a binary/service:
+
+```bash
+# 1. Stop the running Ollama service
+sudo systemctl stop ollama 2>/dev/null || true
+killall ollama 2>/dev/null || true
+
+# 2. Back up your models (optional, Docker will re-download if needed)
+# cp -r ~/.ollama ~/ollama-backup
+
+# 3. Start Docker version (see Option D above)
+docker run -d \
+  --name ollama \
+  --restart unless-stopped \
+  -p 11434:11434 \
+  --device /dev/kfd \
+  --device /dev/dri \
+  -v ollama:/root/.ollama \
+  ollama/ollama:latest
+
+# 4. Your WhatsApp bot will connect to the same http://localhost:11434
+# No config changes needed!
 ```
