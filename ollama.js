@@ -278,6 +278,7 @@ async function main() {
   console.log('[startup] connecting to WhatsApp...');
   const client = await venom.create({
     session: config.sessionName,
+    executablePath: '/usr/bin/firefox',
     headless: 'new',
     disableWelcome: true,
     logQR: true,
