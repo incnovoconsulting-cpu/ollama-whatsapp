@@ -1,0 +1,20 @@
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# venom-bot session data — contains WhatsApp auth tokens, never commit
+tokens/
+session/
+*.session
+WhatsAppBot/
+
+# Local config
+.env
+.env.local
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

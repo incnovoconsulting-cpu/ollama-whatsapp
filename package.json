@@ -1,0 +1,28 @@
+{
+  "name": "ollama-whatsapp",
+  "version": "1.0.0",
+  "description": "WhatsApp chatbot powered by a local Ollama model. Uses venom-bot for WhatsApp Web automation.",
+  "main": "ollama.js",
+  "scripts": {
+    "start": "node ollama.js",
+    "dev": "node --watch ollama.js"
+  },
+  "keywords": [
+    "ollama",
+    "whatsapp",
+    "venom-bot",
+    "chatbot",
+    "ai",
+    "llm",
+    "local-llm"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ollama": "^0.5.9",
+    "venom-bot": "^5.1.0"
+  },
+  "license": "MIT"
+}
